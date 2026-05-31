@@ -23,7 +23,7 @@
     "check": "npm run typecheck && npm run build"
   },
   "dependencies": {
-    "dotenv": "^16.6.1",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "lucide-react": "^0.560.0",
     "openai-oauth": "^1.0.2",
