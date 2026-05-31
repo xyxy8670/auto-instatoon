@@ -1,0 +1,45 @@
+{
+  "name": "instatoon-studio-codex",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "security:check": "node scripts/security-check.mjs",
+    "dev": "concurrently -n api,web -c green,cyan \"node --watch server/index.mjs\" \"vite\"",
+    "dev:web": "vite",
+    "dev:api": "node --watch server/index.mjs",
+    "build": "vite build",
+    "preview": "concurrently -n api,web -c green,cyan \"node server/index.mjs\" \"vite preview\"",
+    "preview:web": "vite preview",
+    "preview:api": "node server/index.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "fflate": "^0.8.2",
+    "lucide-react": "^0.560.0",
+    "openai-oauth": "^1.0.2",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.2.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  },
+  "overrides": {
+    "path-to-regexp": "0.1.13",
+    "qs": "6.15.2"
+  }
+}
