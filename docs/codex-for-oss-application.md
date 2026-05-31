@@ -71,6 +71,14 @@ Codex Security
 Project API credits
 ```
 
+### Why Codex Security is needed
+
+Under 500 characters:
+
+```txt
+I want Codex Security to review this local creator tool for dependency risks, unsafe local API behavior, XSS in generated content surfaces, prompt-handling issues, and privacy regressions. The goal is to keep the project safe for open-source users who run it with local OAuth and private creative drafts.
+```
+
 ### API credit use plan
 
 Under 500 characters:
