@@ -11,14 +11,15 @@ import {
   Sparkles,
   Wand2
 } from "lucide-react";
-import { ApiRequestError, getJson, postJson } from "./services/localApi";
 
 type Health = {
-  codex_oauth_autostart?: boolean;
-  codex_oauth_port?: number;
-  codex_oauth_url?: string;
-  codex_image_model?: string;
-  codex_text_model?: string;
+  app?: string;
+  local_api?: string;
+  oauth_port?: number;
+  oauth_url?: string;
+  text_model?: string;
+  image_model?: string;
+  image_size?: string;
 };
 
 type OAuthStatus = {
@@ -85,115 +86,26 @@ const stylePrompts: Record<VisualStyle, string> = {
     "Modern finance explainer comic style, clean charts as background props, office and phone UI motifs, crisp Korean labels, calm professional palette, friendly characters."
 };
 
-const jsonSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["title", "audience", "thesis", "cards"],
-  properties: {
-    title: { type: "string" },
-    audience: { type: "string" },
-    thesis: { type: "string" },
-    cards: {
-      type: "array",
-      minItems: 1,
-      maxItems: 12,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["headline", "scene", "dialogue", "caption", "visualPrompt"],
-        properties: {
-          headline: { type: "string" },
-          scene: { type: "string" },
-          dialogue: { type: "string" },
-          caption: { type: "string" },
-          visualPrompt: { type: "string" }
-        }
-      }
-    }
-  }
-};
-
 const initialTopic =
   "청년이 경제 뉴스를 읽을 때 가장 먼저 봐야 할 3가지: 금리, 환율, 실적을 인스타툰으로 설명";
 
 const pickText = (error: unknown) => {
-  if (error instanceof ApiRequestError) return error.message;
   if (error instanceof Error) return error.message;
   return String(error || "알 수 없는 오류가 발생했어요.");
 };
 
-const parsePlan = (text: string): PlanResult => {
-  const trimmed = text.trim();
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmed)?.[1];
-  const parsed = JSON.parse(fenced || trimmed);
-  if (!parsed || !Array.isArray(parsed.cards)) throw new Error("콘티 JSON 형식이 맞지 않습니다.");
-  return {
-    title: String(parsed.title || "Untitled Instatoon").trim(),
-    audience: String(parsed.audience || "general").trim(),
-    thesis: String(parsed.thesis || "").trim(),
-    cards: parsed.cards.map((card: any) => ({
-      headline: String(card.headline || "").trim(),
-      scene: String(card.scene || "").trim(),
-      dialogue: String(card.dialogue || "").trim(),
-      caption: String(card.caption || "").trim(),
-      visualPrompt: String(card.visualPrompt || "").trim()
-    }))
-  };
+const requestJson = async <T,>(url: string, options: RequestInit = {}): Promise<T> => {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  return data as T;
 };
-
-const buildPlanPrompt = (params: {
-  topic: string;
-  cardCount: number;
-  tone: Tone;
-  style: VisualStyle;
-}) => `
-Create a Korean Instagram carousel comic storyboard.
-
-Topic:
-${params.topic}
-
-Requirements:
-- exactly ${params.cardCount} cards
-- format: 4:5 instatoon cards
-- tone: ${toneLabels[params.tone]}
-- visual style: ${styleLabels[params.style]}
-- each card must have one clear visual situation, short Korean dialogue, and one caption
-- make it useful for a creator who wants to publish quickly
-- avoid long paragraphs and generic motivational copy
-- keep every Korean text short enough to fit inside a mobile card
-
-Return only JSON that matches the schema.
-`;
-
-const buildImagePrompt = (card: ToonCard, plan: PlanResult, style: VisualStyle) => `
-Create one finished Korean instatoon card image.
-
-Canvas:
-- ${CARD_IMAGE_SIZE}px, vertical 4:5 Instagram carousel card
-- finished image, no watermark, no UI frame
-
-Series:
-- title: ${plan.title}
-- thesis: ${plan.thesis}
-
-Card ${card.index}:
-- headline text: "${card.headline}"
-- scene: ${card.scene}
-- dialogue text: "${card.dialogue}"
-- caption text: "${card.caption}"
-- visual direction: ${card.visualPrompt}
-
-Style:
-${stylePrompts[style]}
-
-Composition rules:
-- Korean text must be readable and short
-- use speech bubbles or compact caption boxes
-- no tiny text blocks
-- no brand logos
-- no photorealism
-- the card should look like a post-ready Instagram comic card
-`;
 
 const makeCards = (plan: PlanResult): ToonCard[] =>
   plan.cards.map((card, index) => ({
@@ -244,8 +156,8 @@ const App: React.FC = () => {
   const refreshStatus = useCallback(async () => {
     try {
       const [nextHealth, nextOauth] = await Promise.all([
-        getJson<Health>("/api/health", { timeoutMs: 5000 }),
-        getJson<OAuthStatus>("/api/oauth/status", { timeoutMs: 5000 })
+        requestJson<Health>("/api/health"),
+        requestJson<OAuthStatus>("/api/oauth/status")
       ]);
       setHealth(nextHealth);
       setOauth(nextOauth);
@@ -267,18 +179,10 @@ const App: React.FC = () => {
     setPlan(null);
     setCards([]);
     try {
-      const response = await postJson<{ text?: string }>("/api/codex/generate-content", {
-        model: health?.codex_text_model || "gpt-5.5",
-        contents: { parts: [{ text: buildPlanPrompt({ topic, cardCount, tone, style }) }] },
-        config: {
-          systemInstruction:
-            "You are a Korean instatoon creative director. Return concise production-ready JSON only.",
-          responseMimeType: "application/json",
-          responseJsonSchema: jsonSchema,
-          reasoningEffort: "medium"
-        }
-      }, { timeoutMs: 10 * 60_000, retries: 1 });
-      const nextPlan = parsePlan(response.text || "");
+      const nextPlan = await requestJson<PlanResult>("/api/instatoon/plan", {
+        method: "POST",
+        body: JSON.stringify({ brief: topic, cardCount, tone, style })
+      });
       const nextCards = makeCards({ ...nextPlan, cards: nextPlan.cards.slice(0, cardCount) });
       setPlan(nextPlan);
       setCards(nextCards);
@@ -297,15 +201,18 @@ const App: React.FC = () => {
   const generateOneImage = async (card: ToonCard, activePlan: PlanResult) => {
     updateCard(card.id, { status: "generating", error: "" });
     try {
-      const response = await postJson<{ image_data_url?: string }>("/api/codex/generate-image", {
-        prompt: buildImagePrompt(card, activePlan, style),
-        size: CARD_IMAGE_SIZE,
-        quality,
-        moderation: "low",
-        model: health?.codex_image_model || "gpt-5.5"
-      }, { timeoutMs: 10 * 60_000, retries: 1 });
-      if (!response.image_data_url) throw new Error("이미지 데이터가 비어 있습니다.");
-      updateCard(card.id, { status: "done", imageUrl: response.image_data_url });
+      const response = await requestJson<{ imageUrl?: string }>("/api/instatoon/image", {
+        method: "POST",
+        body: JSON.stringify({
+          title: activePlan.title,
+          thesis: activePlan.thesis,
+          style,
+          quality,
+          card
+        })
+      });
+      if (!response.imageUrl) throw new Error("이미지 데이터가 비어 있습니다.");
+      updateCard(card.id, { status: "done", imageUrl: response.imageUrl });
     } catch (e) {
       updateCard(card.id, { status: "error", error: pickText(e) });
     }
@@ -333,7 +240,17 @@ const App: React.FC = () => {
 
   const copyPrompt = async (card: ToonCard) => {
     if (!plan) return;
-    await navigator.clipboard.writeText(buildImagePrompt(card, plan, style));
+    await navigator.clipboard.writeText(
+      [
+        `Title: ${plan.title}`,
+        `Card ${card.index}: ${card.headline}`,
+        `Scene: ${card.scene}`,
+        `Dialogue: ${card.dialogue}`,
+        `Caption: ${card.caption}`,
+        `Visual: ${card.visualPrompt}`,
+        `Style: ${styleLabels[style]}`
+      ].join("\n")
+    );
   };
 
   const downloadImage = (card: ToonCard) => {
@@ -533,15 +450,15 @@ const App: React.FC = () => {
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-stone-500">Text</dt>
-                <dd className="truncate">{health?.codex_text_model || "-"}</dd>
+                <dd className="truncate">{health?.text_model || "-"}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-stone-500">Image</dt>
-                <dd className="truncate">{health?.codex_image_model || "-"}</dd>
+                <dd className="truncate">{health?.image_model || "-"}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-stone-500">Port</dt>
-                <dd>{health?.codex_oauth_port || "-"}</dd>
+                <dd>{health?.oauth_port || "-"}</dd>
               </div>
             </dl>
           </div>
