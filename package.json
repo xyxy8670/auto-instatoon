@@ -4,6 +4,14 @@
   "description": "A local Codex-powered studio for turning Korean briefs into 4:5 Instagram carousel comic cards.",
   "license": "MIT",
   "type": "module",
+  "homepage": "https://github.com/xyxy8670/instatoon-studio-codex#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xyxy8670/instatoon-studio-codex.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xyxy8670/instatoon-studio-codex/issues"
+  },
   "keywords": [
     "codex",
     "openai",

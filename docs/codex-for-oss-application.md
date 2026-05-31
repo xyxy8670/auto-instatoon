@@ -34,9 +34,9 @@ Official pages checked on 2026-05-31:
 - [x] Pull request template
 - [x] `.env.example` without secrets
 - [x] Build and typecheck scripts
-- [ ] Replace `YOUR_GITHUB_USERNAME` placeholders in `package.json`
-- [ ] Publish the repository publicly on GitHub
-- [ ] Add repository topics on GitHub: `codex`, `openai`, `creator-tools`, `webtoon`, `local-first`
+- [x] Add the public GitHub URL to `package.json`
+- [x] Publish the repository publicly on GitHub
+- [x] Add repository topics on GitHub: `codex`, `openai`, `creator-tools`, `webtoon`, `local-first`
 - [ ] Add a short demo GIF or screenshots to the README after publishing
 - [ ] Add real usage signals over time: issues, releases, stars, forks, installs, or external mentions
 
@@ -45,7 +45,7 @@ Official pages checked on 2026-05-31:
 ### GitHub repository URL
 
 ```txt
-https://github.com/YOUR_GITHUB_USERNAME/instatoon-studio-codex
+https://github.com/xyxy8670/instatoon-studio-codex
 ```
 
 ### Role
