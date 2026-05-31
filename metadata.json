@@ -1,5 +1,5 @@
 {
   "name": "InstaToon Studio for Codex",
-  "description": "아이디어를 4:5 인스타툰 카드 이미지로 바꾸는 로컬 Codex 제작 도구입니다.",
+  "description": "원고를 카드 설계, 대사, 캡션, 4:5 이미지까지 이어주는 로컬 Codex 인스타툰 제작실입니다.",
   "requestFramePermissions": []
 }

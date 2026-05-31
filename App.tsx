@@ -6,8 +6,12 @@ import {
   Download,
   FileText,
   Image as ImageIcon,
+  LayoutGrid,
   Loader2,
+  PenLine,
   RefreshCw,
+  ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Wand2
 } from "lucide-react";
@@ -58,32 +62,35 @@ type PlanResult = {
   }>;
 };
 
-const CARD_IMAGE_SIZE = "1088x1360";
 const MAX_PARALLEL_IMAGES = 2;
 
-const toneLabels: Record<Tone, string> = {
-  clear: "깔끔",
-  warm: "따뜻",
-  sharp: "날카롭게",
-  funny: "가볍게"
+const toneOptions: Array<{ value: Tone; label: string; hint: string }> = [
+  { value: "clear", label: "명료하게", hint: "군더더기 없이 바로 이해" },
+  { value: "warm", label: "다정하게", hint: "초보자도 편하게 읽힘" },
+  { value: "sharp", label: "날카롭게", hint: "핵심 통찰을 먼저 제시" },
+  { value: "funny", label: "가볍게", hint: "짧은 드립과 리듬감" }
+];
+
+const styleOptions: Array<{ value: VisualStyle; label: string; hint: string }> = [
+  { value: "serialized", label: "연재형 웹툰", hint: "캐릭터와 컷 흐름 중심" },
+  { value: "clean", label: "클린 카드툰", hint: "밝고 정돈된 설명형" },
+  { value: "marker", label: "마커 노트", hint: "손그림 느낌의 교육형" },
+  { value: "finance", label: "금융 해설", hint: "차트와 숫자를 깔끔하게" }
+];
+
+const statusLabels: Record<string, string> = {
+  ready: "Codex 준비됨",
+  auth_required: "로그인 필요",
+  starting: "연결 확인 중",
+  offline: "API 대기"
 };
 
-const styleLabels: Record<VisualStyle, string> = {
-  serialized: "연재 웹툰",
-  clean: "클린 파스텔",
-  marker: "마커 스케치",
-  finance: "금융 카드툰"
-};
-
-const stylePrompts: Record<VisualStyle, string> = {
-  serialized:
-    "Korean serialized webtoon mid-episode panel style, practical mobile readability, clean linework, restrained colors, speech bubbles, casual cropped framing, not a poster, not an ad.",
-  clean:
-    "Clean Korean webtoon card style, smooth pastel colors, crisp linework, bright readability, simple symbolic backgrounds, polished but not glossy.",
-  marker:
-    "Loose marker sketch comic style, expressive lines, warm paper texture, simple faces, handmade education note feeling, readable Korean speech bubbles.",
-  finance:
-    "Modern finance explainer comic style, clean charts as background props, office and phone UI motifs, crisp Korean labels, calm professional palette, friendly characters."
+const cardStatusLabels: Record<CardStatus, string> = {
+  idle: "대기",
+  queued: "예약",
+  generating: "제작 중",
+  done: "완료",
+  error: "오류"
 };
 
 const initialTopic =
@@ -103,7 +110,7 @@ const requestJson = async <T,>(url: string, options: RequestInit = {}): Promise<
     }
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  if (!response.ok) throw new Error(data.error || `요청 실패 (${response.status})`);
   return data as T;
 };
 
@@ -119,12 +126,27 @@ const makeCards = (plan: PlanResult): ToonCard[] =>
     status: "idle"
   }));
 
+const styleLabel = (value: VisualStyle) => styleOptions.find((item) => item.value === value)?.label || value;
+
+const LogoMark = ({ compact = false }: { compact?: boolean }) => (
+  <div className={compact ? "logo-mark logo-mark-sm" : "logo-mark"} aria-hidden="true">
+    <svg viewBox="0 0 80 80" role="img">
+      <rect x="9" y="13" width="46" height="58" rx="11" fill="#111111" />
+      <rect x="21" y="8" width="48" height="58" rx="12" fill="#ff735c" stroke="#111111" strokeWidth="4" />
+      <rect x="29" y="18" width="31" height="9" rx="4.5" fill="#ffffff" />
+      <path d="M31 44c7-13 23-12 27 0 3 10-8 18-19 13" fill="none" stroke="#111111" strokeWidth="5" strokeLinecap="round" />
+      <circle cx="33" cy="38" r="4" fill="#18a999" stroke="#111111" strokeWidth="3" />
+      <path d="M55 9l3-7 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill="#ffe15a" stroke="#111111" strokeWidth="3" />
+    </svg>
+  </div>
+);
+
 const StatusPill = ({ status }: { status: OAuthStatus["status"] }) => {
   const ready = status === "ready";
-  const label = ready ? "Codex 연결됨" : status === "auth_required" ? "로그인 확인 필요" : status === "starting" ? "연결 중" : "오프라인";
+  const label = statusLabels[String(status || "offline")] || "상태 확인";
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ${ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-      {ready ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+    <span className={`status-pill ${ready ? "status-pill-ready" : "status-pill-warn"}`}>
+      {ready ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
       {label}
     </span>
   );
@@ -141,7 +163,7 @@ const App: React.FC = () => {
   const [stage, setStage] = useState<Stage>("idle");
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [cards, setCards] = useState<ToonCard[]>([]);
-  const [selectedCardId, setSelectedCardId] = useState<string>("");
+  const [selectedCardId, setSelectedCardId] = useState("");
   const [error, setError] = useState("");
 
   const selectedCard = useMemo(
@@ -225,7 +247,7 @@ const App: React.FC = () => {
     setCards((prev) => prev.map((card) => (card.status === "done" ? card : { ...card, status: "queued", error: "" })));
 
     let cursor = 0;
-    const currentCards = cards.map((card) => ({ ...card, status: card.status === "done" ? card.status : "queued" as CardStatus }));
+    const currentCards = cards.map((card) => ({ ...card, status: card.status === "done" ? card.status : ("queued" as CardStatus) }));
     const workers = Array.from({ length: Math.min(MAX_PARALLEL_IMAGES, currentCards.length) }, async () => {
       while (cursor < currentCards.length) {
         const card = currentCards[cursor];
@@ -242,13 +264,13 @@ const App: React.FC = () => {
     if (!plan) return;
     await navigator.clipboard.writeText(
       [
-        `Title: ${plan.title}`,
-        `Card ${card.index}: ${card.headline}`,
-        `Scene: ${card.scene}`,
-        `Dialogue: ${card.dialogue}`,
-        `Caption: ${card.caption}`,
-        `Visual: ${card.visualPrompt}`,
-        `Style: ${styleLabels[style]}`
+        `제목: ${plan.title}`,
+        `카드 ${card.index}: ${card.headline}`,
+        `장면: ${card.scene}`,
+        `대사: ${card.dialogue}`,
+        `캡션: ${card.caption}`,
+        `비주얼: ${card.visualPrompt}`,
+        `스타일: ${styleLabel(style)}`
       ].join("\n")
     );
   };
@@ -262,206 +284,248 @@ const App: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-[#f4f1ea] text-stone-950">
-      <section className="border-b border-stone-950/10 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-5 lg:flex-row lg:items-center lg:justify-between">
+    <main className="app-shell min-h-screen text-[#191713]">
+      <header className="topbar">
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-pink-600 text-white shadow-[4px_4px_0_#111]">
-              <Sparkles size={22} />
-            </div>
+            <LogoMark />
             <div>
-              <h1 className="text-2xl font-black tracking-normal">InstaToon Studio</h1>
-              <p className="text-sm font-bold text-stone-500">Codex-powered carousel comic workstation</p>
+              <p className="text-xs font-black uppercase text-[#ff5f4d]">Codex 제작실</p>
+              <h1 className="text-2xl font-black tracking-normal sm:text-3xl">InstaToon Studio</h1>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill status={oauth.status} />
-            <button onClick={refreshStatus} className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-3 py-1.5 text-xs font-black hover:bg-stone-50">
-              <RefreshCw size={14} /> 상태
+            <span className="soft-chip">
+              <ImageIcon size={15} />
+              {health?.image_size || "4:5"}
+            </span>
+            <button onClick={refreshStatus} className="icon-button" aria-label="연결 상태 새로고침">
+              <RefreshCw size={16} />
             </button>
           </div>
         </div>
-      </section>
+      </header>
 
-      <section className="mx-auto grid max-w-7xl gap-5 px-5 py-5 lg:grid-cols-[390px_1fr_360px]">
+      <section className="mx-auto grid max-w-[1500px] gap-5 px-5 py-5 xl:grid-cols-[380px_minmax(0,1fr)_360px]">
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase text-stone-500">Brief</h2>
-              <span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-black text-stone-600">{cardCount} cards</span>
+          <section className="panel">
+            <div className="section-title">
+              <PenLine size={17} />
+              <span>원고</span>
             </div>
             <textarea
               value={topic}
               onChange={(event) => setTopic(event.target.value)}
-              className="min-h-44 w-full resize-y rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm font-bold leading-6 outline-none focus:border-pink-500 focus:bg-white"
+              className="brief-input"
+              placeholder="무슨 내용을 인스타툰으로 만들지 적어주세요."
             />
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <label className="text-xs font-black text-stone-500">
+            <div className="mt-4 grid grid-cols-[1fr_120px] gap-3">
+              <label className="field-label">
                 카드 수
-                <input
-                  type="range"
-                  min={3}
-                  max={12}
-                  value={cardCount}
-                  onChange={(event) => setCardCount(Number(event.target.value))}
-                  className="mt-2 w-full accent-pink-600"
-                />
+                <div className="mt-2 flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={3}
+                    max={12}
+                    value={cardCount}
+                    onChange={(event) => setCardCount(Number(event.target.value))}
+                    className="w-full accent-[#ff5f4d]"
+                  />
+                  <strong className="counter-pill">{cardCount}</strong>
+                </div>
               </label>
-              <label className="text-xs font-black text-stone-500">
+              <label className="field-label">
                 품질
-                <select value={quality} onChange={(event) => setQuality(event.target.value as "medium" | "high")} className="mt-2 w-full rounded-xl border border-stone-200 bg-white p-2 text-sm text-stone-900">
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
+                <select value={quality} onChange={(event) => setQuality(event.target.value as "medium" | "high")} className="select-input">
+                  <option value="high">높음</option>
+                  <option value="medium">보통</option>
                 </select>
               </label>
             </div>
-          </div>
+          </section>
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-black uppercase text-stone-500">Direction</h2>
+          <section className="panel">
+            <div className="section-title">
+              <SlidersHorizontal size={17} />
+              <span>연출</span>
+            </div>
             <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(toneLabels) as Tone[]).map((item) => (
-                <button key={item} onClick={() => setTone(item)} className={`rounded-xl border px-3 py-2 text-sm font-black ${tone === item ? "border-pink-600 bg-pink-600 text-white" : "border-stone-200 bg-white hover:bg-stone-50"}`}>
-                  {toneLabels[item]}
+              {toneOptions.map((item) => (
+                <button key={item.value} onClick={() => setTone(item.value)} className={`choice ${tone === item.value ? "choice-active" : ""}`}>
+                  <strong>{item.label}</strong>
+                  <span>{item.hint}</span>
                 </button>
               ))}
             </div>
             <div className="mt-4 grid gap-2">
-              {(Object.keys(styleLabels) as VisualStyle[]).map((item) => (
-                <button key={item} onClick={() => setStyle(item)} className={`rounded-xl border px-3 py-2 text-left text-sm font-black ${style === item ? "border-stone-950 bg-stone-950 text-white" : "border-stone-200 bg-white hover:bg-stone-50"}`}>
-                  {styleLabels[item]}
+              {styleOptions.map((item) => (
+                <button key={item.value} onClick={() => setStyle(item.value)} className={`style-choice ${style === item.value ? "style-choice-active" : ""}`}>
+                  <span>
+                    <strong>{item.label}</strong>
+                    <small>{item.hint}</small>
+                  </span>
+                  <CheckCircle2 size={17} />
                 </button>
               ))}
             </div>
-          </div>
+          </section>
 
           <button
             onClick={generatePlan}
             disabled={!ready || !topic.trim() || stage === "planning" || stage === "generating"}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-stone-950 px-4 py-4 text-sm font-black text-white shadow-[5px_5px_0_#db2777] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none"
+            className="primary-action"
           >
-            {stage === "planning" ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
-            콘티 만들기
+            {stage === "planning" ? <Loader2 className="animate-spin" size={19} /> : <Wand2 size={19} />}
+            카드 설계하기
           </button>
         </aside>
 
-        <section className="min-h-[680px] rounded-3xl border border-stone-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <section className="workspace">
+          <div className="workspace-head">
             <div>
-              <h2 className="text-lg font-black">{plan?.title || "제작 보드"}</h2>
-              <p className="text-sm font-bold text-stone-500">{plan?.thesis || "콘티를 만들면 카드가 여기에 정렬됩니다."}</p>
+              <div className="section-title mb-2">
+                <LayoutGrid size={17} />
+                <span>카드 보드</span>
+              </div>
+              <h2>{plan?.title || "아이디어를 인스타툰 카드로 정리합니다"}</h2>
+              <p>{plan?.thesis || "왼쪽에 원고를 넣고 카드 설계를 누르면 카드별 장면, 대사, 캡션이 만들어집니다."}</p>
             </div>
             <button
               onClick={generateImages}
               disabled={!ready || !plan || cards.length === 0 || stage === "generating" || stage === "planning"}
-              className="inline-flex items-center gap-2 rounded-2xl bg-pink-600 px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-stone-300"
+              className="render-action"
             >
-              {stage === "generating" ? <Loader2 className="animate-spin" size={18} /> : <ImageIcon size={18} />}
-              이미지 생성
+              {stage === "generating" ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+              이미지 렌더
             </button>
           </div>
 
-          <div className="mb-4 h-2 overflow-hidden rounded-full bg-stone-100">
-            <div className="h-full rounded-full bg-pink-600 transition-all" style={{ width: `${progress}%` }} />
+          <div className="progress-track" aria-label={`진행률 ${progress}%`}>
+            <div style={{ width: `${progress}%` }} />
           </div>
 
           {error ? (
-            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</div>
+            <div className="error-box">
+              <AlertTriangle size={18} />
+              <span>{error}</span>
+            </div>
           ) : null}
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="cards-grid">
             {cards.length === 0 ? (
-              <div className="col-span-full grid min-h-96 place-items-center rounded-2xl border border-dashed border-stone-300 bg-stone-50 text-center">
-                <div>
-                  <FileText className="mx-auto mb-3 text-stone-400" size={38} />
-                  <p className="text-sm font-black text-stone-500">대기 중</p>
-                </div>
+              <div className="empty-state">
+                <LogoMark compact />
+                <strong>아직 만든 카드가 없습니다</strong>
+                <span>원고와 연출을 정한 뒤 카드 설계를 시작하세요.</span>
               </div>
-            ) : cards.map((card) => (
-              <button
-                key={card.id}
-                onClick={() => setSelectedCardId(card.id)}
-                className={`overflow-hidden rounded-2xl border text-left transition ${selectedCard?.id === card.id ? "border-pink-600 ring-4 ring-pink-100" : "border-stone-200 hover:border-stone-400"}`}
-              >
-                <div className="aspect-[4/5] bg-stone-100">
-                  {card.imageUrl ? (
-                    <img src={card.imageUrl} alt={card.headline} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="grid h-full place-items-center p-4 text-center">
-                      {card.status === "generating" ? <Loader2 className="animate-spin text-pink-600" size={28} /> : <span className="text-xs font-black text-stone-400">CARD {card.index}</span>}
-                    </div>
-                  )}
-                </div>
-                <div className="p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-black">#{card.index}</span>
-                    <span className={`text-[11px] font-black ${card.status === "done" ? "text-emerald-600" : card.status === "error" ? "text-red-600" : "text-stone-500"}`}>{card.status}</span>
+            ) : (
+              cards.map((card) => (
+                <button
+                  key={card.id}
+                  onClick={() => setSelectedCardId(card.id)}
+                  className={`toon-card ${selectedCard?.id === card.id ? "toon-card-selected" : ""}`}
+                >
+                  <div className="card-canvas">
+                    {card.imageUrl ? (
+                      <img src={card.imageUrl} alt={card.headline} />
+                    ) : (
+                      <div className="card-placeholder">
+                        {card.status === "generating" ? (
+                          <Loader2 className="animate-spin text-[#ff5f4d]" size={30} />
+                        ) : (
+                          <>
+                            <span>#{String(card.index).padStart(2, "0")}</span>
+                            <small>{cardStatusLabels[card.status]}</small>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <p className="line-clamp-2 text-sm font-black">{card.headline}</p>
-                </div>
-              </button>
-            ))}
+                  <div className="card-copy">
+                    <div>
+                      <span>카드 {card.index}</span>
+                      <em className={card.status === "done" ? "done" : card.status === "error" ? "bad" : ""}>
+                        {cardStatusLabels[card.status]}
+                      </em>
+                    </div>
+                    <strong>{card.headline}</strong>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-black uppercase text-stone-500">Selected Card</h2>
+          <section className="panel">
+            <div className="section-title">
+              <FileText size={17} />
+              <span>카드 상세</span>
+            </div>
             {selectedCard ? (
-              <div className="space-y-3">
-                <p className="text-xl font-black">#{selectedCard.index} {selectedCard.headline}</p>
-                <div className="rounded-xl bg-stone-50 p-3">
-                  <p className="text-xs font-black uppercase text-stone-400">Scene</p>
-                  <p className="mt-1 text-sm font-bold leading-6">{selectedCard.scene}</p>
+              <div className="detail-stack">
+                <h3>
+                  <span>#{selectedCard.index}</span>
+                  {selectedCard.headline}
+                </h3>
+                <div className="detail-block">
+                  <span>장면</span>
+                  <p>{selectedCard.scene}</p>
                 </div>
-                <div className="rounded-xl bg-stone-50 p-3">
-                  <p className="text-xs font-black uppercase text-stone-400">Dialogue</p>
-                  <p className="mt-1 text-sm font-bold leading-6">{selectedCard.dialogue}</p>
+                <div className="detail-block">
+                  <span>대사</span>
+                  <p>{selectedCard.dialogue}</p>
                 </div>
-                <div className="rounded-xl bg-stone-50 p-3">
-                  <p className="text-xs font-black uppercase text-stone-400">Caption</p>
-                  <p className="mt-1 text-sm font-bold leading-6">{selectedCard.caption}</p>
+                <div className="detail-block">
+                  <span>캡션</span>
+                  <p>{selectedCard.caption}</p>
                 </div>
-                {selectedCard.error ? <p className="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{selectedCard.error}</p> : null}
+                {selectedCard.error ? <div className="mini-error">{selectedCard.error}</div> : null}
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => void copyPrompt(selectedCard)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-stone-200 px-3 py-2 text-xs font-black hover:bg-stone-50">
-                    <Copy size={14} /> 프롬프트
+                  <button onClick={() => void copyPrompt(selectedCard)} className="secondary-action">
+                    <Copy size={15} />
+                    복사
                   </button>
-                  <button onClick={() => downloadImage(selectedCard)} disabled={!selectedCard.imageUrl} className="inline-flex items-center justify-center gap-2 rounded-xl border border-stone-200 px-3 py-2 text-xs font-black hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40">
-                    <Download size={14} /> PNG
+                  <button onClick={() => downloadImage(selectedCard)} disabled={!selectedCard.imageUrl} className="secondary-action">
+                    <Download size={15} />
+                    저장
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="text-sm font-bold text-stone-500">카드를 선택하세요.</p>
+              <p className="muted-copy">카드를 만들면 상세 내용이 여기에 표시됩니다.</p>
             )}
-          </div>
+          </section>
 
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-black uppercase text-stone-500">System</h2>
-            <dl className="space-y-2 text-sm font-bold">
-              <div className="flex justify-between gap-3">
-                <dt className="text-stone-500">API</dt>
-                <dd>{health ? "online" : "checking"}</dd>
+          <section className="panel">
+            <div className="section-title">
+              <ShieldCheck size={17} />
+              <span>연결 상태</span>
+            </div>
+            <dl className="system-list">
+              <div>
+                <dt>로컬 API</dt>
+                <dd>{health ? "정상" : "확인 중"}</dd>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-stone-500">OAuth</dt>
-                <dd>{oauth.status || "unknown"}</dd>
+              <div>
+                <dt>Codex</dt>
+                <dd>{statusLabels[String(oauth.status || "offline")] || "확인 중"}</dd>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-stone-500">Text</dt>
-                <dd className="truncate">{health?.text_model || "-"}</dd>
+              <div>
+                <dt>텍스트 모델</dt>
+                <dd>{health?.text_model || "-"}</dd>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-stone-500">Image</dt>
-                <dd className="truncate">{health?.image_model || "-"}</dd>
+              <div>
+                <dt>이미지 모델</dt>
+                <dd>{health?.image_model || "-"}</dd>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-stone-500">Port</dt>
+              <div>
+                <dt>OAuth 포트</dt>
                 <dd>{health?.oauth_port || "-"}</dd>
               </div>
             </dl>
-          </div>
+          </section>
         </aside>
       </section>
     </main>
