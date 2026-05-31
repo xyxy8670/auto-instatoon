@@ -32,7 +32,8 @@ const CODEX_OAUTH_PROXY_PORT = Number.parseInt(
   process.env.CODEX_OAUTH_PROXY_PORT || process.env.OAUTH_PORT || "10531",
   10
 );
-const CODEX_OAUTH_URL = `http://127.0.0.1:${CODEX_OAUTH_PROXY_PORT}`;
+let activeCodexOAuthPort = CODEX_OAUTH_PROXY_PORT;
+const getCodexOAuthUrl = () => `http://127.0.0.1:${activeCodexOAuthPort}`;
 const CODEX_OAUTH_AUTOSTART = !/^(1|true|yes)$/i.test(String(process.env.CODEX_NO_OAUTH_PROXY || ""));
 const CODEX_DEFAULT_IMAGE_MODEL = String(process.env.CODEX_IMAGE_MODEL || "gpt-5.5").trim() || "gpt-5.5";
 const CODEX_DEFAULT_TEXT_MODEL = String(process.env.CODEX_TEXT_MODEL || "gpt-5.5").trim() || "gpt-5.5";
@@ -418,6 +419,10 @@ const startCodexOAuthProxy = () => {
 
   codexOAuthChild.stdout.on("data", (chunk) => {
     const message = chunk.toString().trim();
+    const fallbackPort = /Using port\s+(\d+)\s+instead/i.exec(message)?.[1];
+    const readyPort = /endpoint ready at http:\/\/127\.0\.0\.1:(\d+)\/v1/i.exec(message)?.[1];
+    const nextPort = Number.parseInt(readyPort || fallbackPort || "", 10);
+    if (Number.isFinite(nextPort) && nextPort > 0) activeCodexOAuthPort = nextPort;
     if (message) console.log(`[codex-oauth] ${message}`);
   });
   codexOAuthChild.stderr.on("data", (chunk) => {
@@ -452,7 +457,7 @@ process.once("SIGTERM", () => {
 
 const getCodexOAuthStatus = async () => {
   try {
-    const response = await fetch(`${CODEX_OAUTH_URL}/v1/models`, {
+    const response = await fetch(`${getCodexOAuthUrl()}/v1/models`, {
       signal: AbortSignal.timeout(3000)
     });
     if (!response.ok) return { status: "auth_required", models: [] };
@@ -631,7 +636,7 @@ const generateCodexImage = async ({ prompt, size, quality, moderation, model, re
 
   let response;
   try {
-    response = await fetch(`${CODEX_OAUTH_URL}/v1/responses`, {
+    response = await fetch(`${getCodexOAuthUrl()}/v1/responses`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "text/event-stream", "X-Request-Id": requestId || createRequestId() },
       body: JSON.stringify(buildRequestBody(true)),
@@ -664,7 +669,7 @@ const generateCodexImage = async ({ prompt, size, quality, moderation, model, re
     });
     let retryResponse;
     try {
-      retryResponse = await fetch(`${CODEX_OAUTH_URL}/v1/responses`, {
+      retryResponse = await fetch(`${getCodexOAuthUrl()}/v1/responses`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Request-Id": requestId || createRequestId() },
         body: JSON.stringify(buildRequestBody(false)),
@@ -873,7 +878,7 @@ const generateCodexContent = async (request) => {
 
   let response;
   try {
-    response = await fetch(`${CODEX_OAUTH_URL}/v1/responses`, {
+    response = await fetch(`${getCodexOAuthUrl()}/v1/responses`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
       body: JSON.stringify(body),
@@ -885,7 +890,7 @@ const generateCodexContent = async (request) => {
 
   if (!response.ok && schema) {
     try {
-      response = await fetch(`${CODEX_OAUTH_URL}/v1/responses`, {
+      response = await fetch(`${getCodexOAuthUrl()}/v1/responses`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({
@@ -1290,7 +1295,8 @@ app.use((err, _req, res, next) => {
 app.get("/api/health", (_req, res) => {
   res.json({
     codex_oauth_autostart: CODEX_OAUTH_AUTOSTART,
-    codex_oauth_port: CODEX_OAUTH_PROXY_PORT,
+    codex_oauth_port: activeCodexOAuthPort,
+    codex_oauth_url: getCodexOAuthUrl(),
     codex_image_model: CODEX_DEFAULT_IMAGE_MODEL,
     codex_text_model: CODEX_DEFAULT_TEXT_MODEL,
     text_generation_provider: "codex_oauth",
@@ -1563,5 +1569,5 @@ app.listen(PORT, HOST, () => {
     console.warn(`[local-api] warning: API is bound to ${HOST}. Use LOCAL_API_HOST=127.0.0.1 for local-only access.`);
   }
   console.log(`[local-api] listening on http://${displayedHost}:${PORT}`);
-  console.log(`[local-api] Codex OAuth: ${CODEX_OAUTH_AUTOSTART ? "auto" : "manual"} on ${CODEX_OAUTH_URL}`);
+  console.log(`[local-api] Codex OAuth: ${CODEX_OAUTH_AUTOSTART ? "auto" : "manual"} on ${getCodexOAuthUrl()}`);
 });
