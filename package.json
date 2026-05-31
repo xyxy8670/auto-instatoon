@@ -27,13 +27,13 @@
     "express": "^4.21.2",
     "lucide-react": "^0.560.0",
     "openai-oauth": "^1.0.2",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "autoprefixer": "^10.4.20",
+    "autoprefixer": "^10.5.0",
     "concurrently": "^9.2.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
