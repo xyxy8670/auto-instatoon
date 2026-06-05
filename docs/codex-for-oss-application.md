@@ -45,7 +45,7 @@ Official pages checked on 2026-05-31:
 ### GitHub repository URL
 
 ```txt
-https://github.com/xyxy8670/instatoon-studio-codex
+https://github.com/xyxy8670/auto-instatoon
 ```
 
 ### Role
@@ -59,7 +59,7 @@ Primary maintainer
 Under 500 characters:
 
 ```txt
-InstaToon Studio is a local-first Codex reference app for Korean creators turning briefs into reviewable Instagram carousel comics. It demonstrates maintainer-relevant Codex workflows: structured JSON planning, local OAuth integration, streamed image generation, privacy-conscious defaults, and a small reviewable codebase. I maintain the repo and plan to use Codex for PR review, issue triage, release prep, and security checks.
+Auto InstaToon is a local-first Codex reference app for Korean creators turning briefs into reviewable Instagram carousel comics. It demonstrates maintainer-relevant Codex workflows: structured JSON planning, local OAuth integration, streamed image generation, privacy-conscious defaults, and a small reviewable codebase. I maintain the repo and plan to use Codex for PR review, issue triage, release prep, and security checks.
 ```
 
 ### Interested benefits

@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking an interest in InstaToon Studio for Codex.
+Thanks for taking an interest in Auto InstaToon for Codex.
 
 This project is intentionally small. Contributions should keep the app local-first, reviewable, and easy to run on a creator's machine.
 

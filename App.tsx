@@ -291,7 +291,7 @@ const App: React.FC = () => {
             <LogoMark />
             <div>
               <p className="text-xs font-black uppercase text-[#ff5f4d]">Codex 제작실</p>
-              <h1 className="text-2xl font-black tracking-normal sm:text-3xl">InstaToon Studio</h1>
+              <h1 className="text-2xl font-black tracking-normal sm:text-3xl">Auto InstaToon</h1>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">

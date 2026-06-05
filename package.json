@@ -1,16 +1,16 @@
 {
-  "name": "instatoon-studio-codex",
+  "name": "auto-instatoon",
   "version": "0.1.0",
   "description": "A local Codex-powered studio for turning Korean briefs into 4:5 Instagram carousel comic cards.",
   "license": "MIT",
   "type": "module",
-  "homepage": "https://github.com/xyxy8670/instatoon-studio-codex#readme",
+  "homepage": "https://github.com/xyxy8670/auto-instatoon#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xyxy8670/instatoon-studio-codex.git"
+    "url": "https://github.com/xyxy8670/auto-instatoon.git"
   },
   "bugs": {
-    "url": "https://github.com/xyxy8670/instatoon-studio-codex/issues"
+    "url": "https://github.com/xyxy8670/auto-instatoon/issues"
   },
   "keywords": [
     "codex",

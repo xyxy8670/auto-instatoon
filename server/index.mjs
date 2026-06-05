@@ -206,7 +206,7 @@ const oauthStatus = async () => {
 
 app.get("/api/health", (_req, res) => {
   res.json({
-    app: "instatoon-studio-codex",
+    app: "auto-instatoon",
     local_api: "ready",
     oauth_url: oauthUrl(),
     oauth_port: oauthPort,
@@ -311,6 +311,6 @@ process.once("SIGTERM", () => {
 startOAuth();
 
 app.listen(PORT, HOST, () => {
-  console.log(`[api] InstaToon Studio on http://${HOST}:${PORT}`);
+  console.log(`[api] Auto InstaToon on http://${HOST}:${PORT}`);
   console.log(`[api] Codex OAuth ${oauthUrl()}`);
 });

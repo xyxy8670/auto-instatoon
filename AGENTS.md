@@ -1,6 +1,6 @@
 ## Project Identity
 
-InstaToon Studio is a minimal local app for creating 4:5 Korean Instagram carousel comics with Codex OAuth.
+Auto InstaToon is a minimal local app for creating 4:5 Korean Instagram carousel comics with Codex OAuth.
 
 ## Rules
 

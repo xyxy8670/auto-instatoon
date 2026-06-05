@@ -1,5 +1,5 @@
 {
-  "name": "InstaToon Studio for Codex",
+  "name": "Auto InstaToon for Codex",
   "description": "원고를 카드 설계, 대사, 캡션, 4:5 이미지까지 이어주는 로컬 Codex 인스타툰 제작실입니다.",
   "requestFramePermissions": []
 }

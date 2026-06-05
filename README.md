@@ -1,6 +1,6 @@
-# InstaToon Studio for Codex
+# Auto InstaToon for Codex
 
-InstaToon Studio is a local-first Codex app that turns a Korean content brief into a 4:5 Instagram carousel comic workflow: card planning, scene direction, dialogue, captions, image prompts, image generation, prompt copy, and PNG download.
+Auto InstaToon is a local-first Codex app that turns a Korean content brief into a 4:5 Instagram carousel comic workflow: card planning, scene direction, dialogue, captions, image prompts, image generation, prompt copy, and PNG download.
 
 The project is intentionally small and easy to audit. It is built for creators, educators, and maintainers who want a practical example of a Codex-powered local creative tool without uploading private drafts to a third-party app server.
 
@@ -15,7 +15,7 @@ The project is intentionally small and easy to audit. It is built for creators, 
 
 ## Why This Exists
 
-Many Korean creators make educational Instagram carousel comics by moving between notes, prompt drafts, image tools, and manual export steps. InstaToon Studio compresses that workflow into one local interface so creators can inspect every card before rendering images.
+Many Korean creators make educational Instagram carousel comics by moving between notes, prompt drafts, image tools, and manual export steps. Auto InstaToon compresses that workflow into one local interface so creators can inspect every card before rendering images.
 
 For open-source maintainers, this repo is also a compact reference implementation for:
 
